@@ -158,7 +158,7 @@ disease_data = {
         "mr": {
             "name": "द्राक्ष काळा कुजवा",
             "description": "द्राक्ष काळा कुजवा हा एक बुरशीजन्य रोग आहे जो द्राक्षांना गंभीरपणे प्रभावित करतो. तो पानांवर लालसर-तपकिरी ठिपके म्हणून दिसतो आणि द्राक्षे सुकवून काळी पडतात.",
-            "medicine": "कॅप्टन किंवा मॅन्कोझेब असलेले बुरशीनाशक वापरा. रोगाचा प्रसार कमी करण्यासाठी संक्रमित फांद्या छाटा आणि वनस्पतींचा कचरा साफ करा।"
+            "medicine": "कॅप्टन किंवा मॅन्कोझेब असलेले बुरशीनाशक स्प्रे वापरा. रोगाचा प्रसार कमी करण्यासाठी संक्रमित फांद्या छाटा आणि वनस्पतींचा कचरा साफ करा."
         }
     },
     "Potato Late Blight": {
@@ -185,7 +185,7 @@ disease_data = {
         "bn": {
             "name": "আলু লেট ব্লাইট",
             "description": "আলু লেট ব্লাইট একটি বিধ্বংসী রোগ যা পাতা এবং ডালপালায় কালো, জল-ডোবা দাগ সৃষ্টি করে। এটি দ্রুত আলুর পুরো ফসল ধ্বংস করতে পারে।",
-            "medicine": "ক্লোরোথ্যালোনিল বা ম্যানকোজেব ধারণকারী ছত্রাকনাশক স্প্রে ব্যবহার করুন। গাছের মধ্যে সঠিক দূরত্ব নিশ্চিত করুন आणि সরাসরি পাতায় জল দেওয়া এড়িয়ে চলুন।"
+            "medicine": "ক্লোरोথ্যালোনিল বা ম্যানকোজেব ধারণকারী ছত্রাকনাশক স্প্রে ব্যবহার করুন। গাছের মধ্যে সঠিক দূরত্ব নিশ্চিত করুন आणि সরাসরি পাতায় जल দেওয়া এড়িয়ে চলুন।"
         },
         "mr": {
             "name": "बटाटा उशिरा बुरशी",
@@ -257,10 +257,15 @@ col1, col2 = st.columns(2)
 
 with col1:
     if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        try:
+            # Use a context manager to handle file stream
+            with uploaded_file as f:
+                image = Image.open(f)
+            st.image(image, caption="Uploaded Image", use_container_width=True)
+        except Exception:
+            st.error("Error processing the image file. Please upload a valid image.")
     else:
-        st.image("https://placehold.co/400x300/e2e8f0/4a5568?text=Click+to+upload+a+leaf+image", use_column_width=True)
+        st.image("https://placehold.co/400x300/e2e8f0/4a5568?text=Click+to+upload+a+leaf+image", use_container_width=True)
 
 with col2:
     if uploaded_file is not None:
@@ -281,7 +286,8 @@ with col2:
         st.session_state.history.append({
             "disease_name": rec['name'],
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "image_url": uploaded_file
+            "image_name": uploaded_file.name,
+            "image_size": f"{uploaded_file.size / 1024:.2f} KB"
         })
 
 # --- History Section ---
