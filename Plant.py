@@ -15,8 +15,8 @@ if 'history' not in st.session_state:
     st.session_state.history = []
 if 'language' not in st.session_state:
     st.session_state.language = 'en'
-if 'last_prediction_time' not in st.session_state:
-    st.session_state.last_prediction_time = 0
+if 'uploaded_file' not in st.session_state:
+    st.session_state.uploaded_file = None
 
 def predict_disease(image_file):
     """
@@ -147,7 +147,7 @@ disease_data = {
         },
         "te": {
             "name": "ద్రాక్ష బ్లాక్ రాట్",
-            "description": "ద్రాక్ష బ్లాక్ రాట్ అనేది ద్రాక్షను తీవ్రంగా ప్రభావితం చేసే ఒక శిలీന്ദ്ര వ్యాధి. ఇది ఆకులపై ఎర్రటి-గోధుమ రంగు మచ్చలుగా కనిపిస్తుంది మరియు ద్రాక్షను ముడుచుకొని నల్లగా మారేలా చేస్తుంది.",
+            "description": "ద్రాక్ష బ్లాక్ రాట్ అనేది ద్రాక్షను తీవ్రంగా ప్రభావితం చేసే ఒక శిలీంద్ర వ్యాధి. ఇది ఆకులపై ఎర్రటి-గోధుమ రంగు మచ్చలుగా కనిపిస్తుంది మరియు ద్రాక్షను ముడుచుకొని నల్లగా మారేలా చేస్తుంది.",
             "medicine": "కాప్టాన్ లేదా మాంకోజెబ్ ఉన్న శిలీంద్రనాశినులను ఉపయోగించండి. వ్యాధి వ్యాప్తిని తగ్గించడానికి ప్రభావితమైన రెమ్మలను కత్తిరించండి మరియు మొక్కల శిథిలాలను శుభ్రం చేయండి."
         },
         "bn": {
@@ -185,12 +185,12 @@ disease_data = {
         "bn": {
             "name": "আলু লেট ব্লাইট",
             "description": "আলু লেট ব্লাইট একটি বিধ্বংসী রোগ যা পাতা এবং ডালপালায় কালো, জল-ডোবা দাগ সৃষ্টি করে। এটি দ্রুত আলুর পুরো ফসল ধ্বংস করতে পারে।",
-            "medicine": "ক্লোरोথ্যালोनिल বা ম্যানকোজেব ধারণকারী ছত্রাকনাশক স্প্রে ব্যবহার করুন। গাছের মধ্যে সঠিক দূরত্ব নিশ্চিত করুন आणि थेट পাতায় जल देणे टाळा।"
+            "medicine": "ক্লোরোথ্যালোনিল বা ম্যানকোজেব ধারণকারী ছত্রাকনাশক স্প্রে ব্যবহার করুন। গাছের মধ্যে সঠিক দূরত্ব নিশ্চিত করুন এবং সরাসরি পাতায় জল দেওয়া এড়িয়ে চলুন।"
         },
         "mr": {
             "name": "बटाटा उशिरा बुरशी",
             "description": "बटाटा उशिरा बुरशी हा एक विनाशकारी रोग आहे. ज्यामुळे पाने आणि फांद्यांवर काळे, पाण्याने भरलेले ठिपके येतात. तो संपूर्ण बटाट्याचे पीक वेगाने नष्ट करू शकतो.",
-            "medicine": "क्लोरोथॅलोनिल किंवा मॅन्कोझेब असलेले बुरशीनाशक स्प्रे वापरा. वनस्पतींमध्ये योग्य अंतर ठेवा आणि पानांवर थेट पाणी देणे टाळा."
+            "medicine": "क्लोरोथॅलोনिल किंवा मॅन्कोझेब असलेले बुरशीनाशक स्प्रे वापरा. वनस्पतींमध्ये योग्य अंतर ठेवा आणि पानांवर थेट पाणी देणे टाळा."
         }
     },
     "Healthy": {
@@ -217,7 +217,7 @@ disease_data = {
         "bn": {
             "name": "স্বাস্থ্যবান",
             "description": "এই গাছে রোগের কোন লক্ষণ নেই। ভালো যত্ন চালিয়ে যান!",
-            "medicine": "কোনো চিকিৎসার প্রয়োজন নেই। পর্যাপ্ত জল, সূর্যালোক এবং পুষ্টি সরবরাহ চালিয়ে যান।"
+            "medicine": "কোনো চিকিৎসার প্রয়োজন নেই। পর্যাপ্ত জল, সূর্যালোক आणि पुष्टी সরবরাহ চালিয়ে যান।"
         },
         "mr": {
             "name": "निरोगी",
@@ -252,14 +252,18 @@ uploaded_file = st.file_uploader(
     type=["jpg", "jpeg", "png"]
 )
 
+# Check if a new file has been uploaded to update the session state
+if uploaded_file is not None and st.session_state.uploaded_file != uploaded_file:
+    st.session_state.uploaded_file = uploaded_file
+
 # Layout for image and results
 col1, col2 = st.columns(2)
 
 with col1:
-    if uploaded_file is not None:
+    if st.session_state.uploaded_file is not None:
         try:
             # Use a context manager to handle file stream
-            with uploaded_file as f:
+            with st.session_state.uploaded_file as f:
                 image = Image.open(f)
             st.image(image, caption="Uploaded Image", use_container_width=True)
         except Exception:
@@ -268,11 +272,11 @@ with col1:
         st.image("https://placehold.co/400x300/e2e8f0/4a5568?text=Click+to+upload+a+leaf+image", use_container_width=True)
 
 with col2:
-    if uploaded_file is not None:
+    if st.session_state.uploaded_file is not None:
         # Simulate prediction with a loading spinner
         with st.spinner('Analyzing image...'):
             time.sleep(2)  # Simulate delay for prediction
-            disease_name = predict_disease(uploaded_file)
+            disease_name = predict_disease(st.session_state.uploaded_file)
         
         # Get the recommendation in the selected language
         rec = disease_data.get(disease_name, disease_data["Healthy"]).get(st.session_state.language, disease_data["Healthy"]["en"])
@@ -286,8 +290,8 @@ with col2:
         st.session_state.history.append({
             "disease_name": rec['name'],
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "image_name": uploaded_file.name,
-            "image_size": f"{uploaded_file.size / 1024:.2f} KB"
+            "image_name": st.session_state.uploaded_file.name,
+            "image_size": f"{st.session_state.uploaded_file.size / 1024:.2f} KB"
         })
 
 # --- History Section ---
