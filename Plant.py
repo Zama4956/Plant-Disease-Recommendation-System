@@ -17,8 +17,10 @@ if 'language' not in st.session_state:
     st.session_state.language = 'en'
 if 'uploaded_file' not in st.session_state:
     st.session_state.uploaded_file = None
+if 'last_prediction_hash' not in st.session_state:
+    st.session_state.last_prediction_hash = None
 
-def predict_disease(image_file):
+def predict_disease(image_bytes):
     """
     This is a placeholder function that simulates a machine learning model.
     In a real application, you would load and use your actual model here.
@@ -147,8 +149,8 @@ disease_data = {
         },
         "te": {
             "name": "ద్రాక్ష బ్లాక్ రాట్",
-            "description": "ద్రాక్ష బ్లాక్ రాట్ అనేది ద్రాక్షను తీవ్రంగా ప్రభావితం చేసే ఒక శిలీന്ദ്ര వ్యాధి. ఇది ఆకులపై ఎర్రటి-గోధుమ రంగు మచ్చలుగా కనిపిస్తుంది మరియు ద్రాక్షను ముడుచుకొని నల్లగా మారేలా చేస్తుంది.",
-            "medicine": "కాప్టాన్ లేదా మాంకోజెబ్ ఉన్న శిలీന്ദ്രనాశినులను ఉపయోగించండి. వ్యాధి వ్యాప్తిని తగ్గించడానికి ప్రభావితమైన రెమ్మలను కత్తిరించండి మరియు మొక్కల శిథిలాలను శుభ్రం చేయండి."
+            "description": "ద్రాక్ష బ్లాక్ రాట్ అనేది ద్రాక్షను తీవ్రంగా ప్రభావితం చేసే ఒక శిలీంద్ర వ్యాధి. ఇది ఆకులపై ఎర్రటి-గోధుమ రంగు మచ్చలుగా కనిపిస్తుంది మరియు ద్రాక్షను ముడుచుకొని నల్లగా మారేలా చేస్తుంది.",
+            "medicine": "కాప్టాన్ లేదా మాంకోజెబ్ ఉన్న శిలీంద్రనాశినులను ఉపయోగించండి. వ్యాధి వ్యాప్తిని తగ్గించడానికి ప్రభావితమైన రెమ్మలను కత్తిరించండి మరియు మొక్కల శిథిలాలను శుభ్రం చేయండి."
         },
         "bn": {
             "name": "আঙ্গুর ব্ল্যাক রট",
@@ -217,7 +219,7 @@ disease_data = {
         "bn": {
             "name": "স্বাস্থ্যবান",
             "description": "এই গাছে রোগের কোন লক্ষণ নেই। ভালো যত্ন চালিয়ে যান!",
-            "medicine": "কোনো চিকিৎসার প্রয়োজন নেই। পর্যাপ্ত জল, সূর্যালোক आणि पुष्टी সরবরাহ চালিয়ে যান।"
+            "medicine": "কোনো চিকিৎসার প্রয়োজন নেই। পর্যাপ্ত জল, সূর্যালোক आणि পুष्टी সরবরাহ চালিয়ে যান।"
         },
         "mr": {
             "name": "निरोगी",
@@ -253,8 +255,9 @@ uploaded_file = st.file_uploader(
 )
 
 # Check if a new file has been uploaded to update the session state
-if uploaded_file is not None:
+if uploaded_file is not None and st.session_state.uploaded_file != uploaded_file:
     st.session_state.uploaded_file = uploaded_file
+    st.session_state.last_prediction_hash = None # Reset prediction if a new file is uploaded
 
 # Layout for image and results
 col1, col2 = st.columns(2)
@@ -262,37 +265,51 @@ col1, col2 = st.columns(2)
 with col1:
     if st.session_state.uploaded_file is not None:
         try:
-            # Use a context manager to handle file stream
-            with st.session_state.uploaded_file as f:
-                image = Image.open(f)
+            # Read the uploaded file as a byte stream and open it as an image
+            image_bytes = st.session_state.uploaded_file.read()
+            image = Image.open(io.BytesIO(image_bytes))
             st.image(image, caption="Uploaded Image", use_container_width=True)
         except Exception:
             st.error("Error processing the image file. Please upload a valid image.")
+            st.session_state.uploaded_file = None # Clear the invalid file from state
     else:
         st.image("https://placehold.co/400x300/e2e8f0/4a5568?text=Click+to+upload+a+leaf+image", use_container_width=True)
 
 with col2:
     if st.session_state.uploaded_file is not None:
-        # Simulate prediction with a loading spinner
-        with st.spinner('Analyzing image...'):
-            time.sleep(2)  # Simulate delay for prediction
-            disease_name = predict_disease(st.session_state.uploaded_file)
+        # Generate a unique hash for the current prediction to prevent re-running unnecessarily
+        current_prediction_hash = hash((st.session_state.uploaded_file.name, st.session_state.language))
         
-        # Get the recommendation in the selected language
-        rec = disease_data.get(disease_name, disease_data["Healthy"]).get(st.session_state.language, disease_data["Healthy"]["en"])
-        
-        st.subheader("Recommendation")
-        st.markdown(f"**Disease Name:** {rec['name']}")
-        st.markdown(f"**Description:** {rec['description']}")
-        st.markdown(f"**Recommended Medicine:** {rec['medicine']}")
+        # Only run prediction if the file or language has changed
+        if st.session_state.last_prediction_hash != current_prediction_hash:
+            # Simulate prediction with a loading spinner
+            with st.spinner('Analyzing image...'):
+                time.sleep(2)  # Simulate delay for prediction
+                # Pass the byte stream to the predict function
+                disease_name = predict_disease(image_bytes)
+            
+            # Get the recommendation in the selected language
+            rec = disease_data.get(disease_name, disease_data["Healthy"]).get(st.session_state.language, disease_data["Healthy"]["en"])
+            
+            st.session_state.history.append({
+                "disease_name": rec['name'],
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "image_name": st.session_state.uploaded_file.name,
+                "image_size": f"{st.session_state.uploaded_file.size / 1024:.2f} KB"
+            })
+            st.session_state.last_prediction_hash = current_prediction_hash
 
-        # Add to history
-        st.session_state.history.append({
-            "disease_name": rec['name'],
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "image_name": st.session_state.uploaded_file.name,
-            "image_size": f"{st.session_state.uploaded_file.size / 1024:.2f} KB"
-        })
+        # Display the result from the most recent entry in history
+        if st.session_state.history:
+            latest_rec = st.session_state.history[-1]
+            st.subheader("Recommendation")
+            st.markdown(f"**Disease Name:** {latest_rec['disease_name']}")
+            rec_full = disease_data.get(latest_rec['disease_name'], disease_data["Healthy"]).get(st.session_state.language, disease_data["Healthy"]["en"])
+            st.markdown(f"**Description:** {rec_full['description']}")
+            st.markdown(f"**Recommended Medicine:** {rec_full['medicine']}")
+        else:
+            st.info("No recommendation yet.")
+
 
 # --- History Section ---
 st.markdown("---")
